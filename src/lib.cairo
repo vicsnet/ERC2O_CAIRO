@@ -138,7 +138,10 @@ mod ERC20Starknet {
 
     }
 
+#[external(v0)]
+fn increase_allowance(ref self:ContractState){
 
+}
 
 
     
