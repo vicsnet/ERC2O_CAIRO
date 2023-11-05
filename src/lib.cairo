@@ -15,7 +15,6 @@ trait IERC20Starknet<TContractState> {
         value: u256
     ) -> bool;
     fn approve(ref self: TContractState, spender_address: ContractAddress, value: u256) -> bool;
-
 }
 
 #[starknet::contract]
@@ -64,12 +63,15 @@ mod ERC20Starknet {
         _total_supply: u256,
         _name: felt252,
         _decimals: u8,
-        _symbol: felt252
+        _symbol: felt252,
+        _amount:u256
     ) {
+        let caller = get_caller_address();
         self.total_supply.write(_total_supply);
         self.name.write(_name);
         self.decimals.write(_decimals);
         self.symbol.write(_symbol);
+        self._mint(caller,_amount );
     }
     #[external(v0)]
     impl ERC20StarknetImpl of super::IERC20Starknet<ContractState> {
@@ -135,14 +137,72 @@ mod ERC20Starknet {
                 );
             true;
         }
+    }
+    #[generate_trait]
+    impl Private of PrivateTrait {
+        fn _burn(ref self:ContractState, from_address:ContractAddress, value:u256) {
+              let address0 = ContractAddressZeroable();
+            assert(from_address != address0, 'zero address');
+            assert(self.balances.read(from_address)>=value, 'insufficient fund');
+            self.balances.write(from_address, self.balances.read(from_address)-value);
+            self.total_supply.write (self.total_supply.read()-value);
+            self.emit(
+                Transfer{
+                    from_address:from_address,
+                    to_address:address0,
+                    value:value
+                }
+            )
 
+
+        }
+
+        fn _mint(ref self: ContractState, owner: ContractAddress, value: u256) {
+            let address0 = ContractAddressZeroable();
+            let addr= ContractAddress();
+            assert(owner != address0, 'zero address');
+            self.write.balances(owner, self.balances.read(owner)+ value);
+            self.emit(Transfer{
+                from_address:addr,
+                to_address:owner,
+                value:value,
+            })
+        }
     }
 
-#[external(v0)]
-fn increase_allowance(ref self:ContractState){
+    #[external(v0)]
+    fn increase_allowance(
+        ref self: ContractState, spender_address: ContractAddress, value: u256
+    ) -> bool {
+        let caller = get_caller_address();
+        let address0 = ContractAddressZeroable();
+        assert(spender_address != address0, 'zero address');
+        self
+            .allowed
+            .write(caller, spender_address, self.allowed.read(caller, spender_address) + value);
+        self
+            .emit(
+                Approval { owner_address: caller, spender_address: spender_address, value: value }
+            );
+        true;
+    }
 
-}
-
-
-    
+    fn decrease_allowance(
+        ref self: ContractState, spender_address: ContractAddress, value: u256
+    ) -> bool {
+        let caller = get_caller_address();
+        let address0 = ContractAddressZeroable();
+        assert(spender_address != address0, 'zero address');
+        self.allowed
+        self
+            .emit(
+                Approval { owner_address: caller, spender_address: spender_address, value: value }
+            );
+        true;
+    }
+    fn burn(ref self:ContractState, value:u256)->bool{
+        let caller = get_caller_address();
+        _burn(caller, value);
+        true;
+    }
 }
