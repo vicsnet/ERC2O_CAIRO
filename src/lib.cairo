@@ -18,12 +18,19 @@ trait IERC20Starknet<TContractState> {
 #[starknet::contract]
 mod ERC20Starknet {
 
-use starknet::ContractAddress;
-use starknet::get_caller_address;
+use starknet::{ContractAddress, get_caller_address};
+
 
     #[storage]
     struct Storage {
-        balance: felt252, 
+        balances: LegacyMap::<ContractAddress, u256>,
+        allowed:LegacyMap::<(ContractAddress, ContractAddress), u256>,
+        totalSupply:u256,
+        name:felt252,
+        decimals:u8,
+        symbol:felt252,
+        // balance: felt252, 
+        
     }
 
 
@@ -47,6 +54,16 @@ owner_address: ContractAddress,
 spender_address: ContractAddress,
 value:u256
 
+}
+
+
+#[constructor]
+fn constructor(ref self: ContractState, total_supply:u256, _name:felt252, _decimals:u8, _symbol:felt252) {
+    self.totalSupply.write(total_supply);
+    self.name.write(_name);
+    self.decimals.write(_decimals);
+    self.symbol.write(_symbol);
+    
 }
     #[external(v0)]
     impl ERC20StarknetImpl of super::IERC20Starknet<ContractState> {
